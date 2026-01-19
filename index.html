@@ -3,164 +3,430 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Retro Tasks</title>
-    <!-- 1. Tailwind CSS (디자인 도구) -->
+    <title>계좌별 주식 & 배당 통합 트래커</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 2. React & ReactDOM (앱 엔진) -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <!-- 3. Babel (코드 번역기) -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     
-    <!-- 폰트 설정 -->
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
-        body { font-family: 'Courier Prime', monospace; }
-        .drag-over { opacity: 0.5; }
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;600;700&display=swap');
+        body { font-family: 'Pretendard', sans-serif; background-color: #F3F4F6; }
+        
+        .text-up { color: #EF4444; }   
+        .bg-up { background-color: #FEF2F2; color: #EF4444; }
+        .text-down { color: #3B82F6; } 
+        .bg-down { background-color: #EFF6FF; color: #3B82F6; }
+        
+        .tab-active { background-color: #1F2937; color: white; }
+        .tab-inactive { background-color: white; color: #4B5563; }
+
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        
+        /* 모달 애니메이션 */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .modal-overlay { animation: fadeIn 0.2s ease-out; }
     </style>
-
-    <!-- Tailwind 커스텀 색상 설정 -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        retro: {
-                            bg: '#e6e0d4',
-                            paper: '#fff9ee',
-                            ink: '#2c241b',
-                            accent: '#e07a5f',
-                            secondary: '#3d405b',
-                            highlight: '#f2cc8f',
-                            green: '#81b29a'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
 </head>
-<body class="bg-retro-bg min-h-screen flex items-center justify-center text-retro-ink selection:bg-retro-accent selection:text-white">
+<body>
+    <div id="root"></div>
 
-    <!-- 리액트가 그려질 뿌리 요소 -->
-    <div id="root" class="w-full max-w-md p-4"></div>
-
-    <!-- 리액트 코드 시작 -->
     <script type="text/babel">
-        const { useState, useRef, useEffect } = React;
+        const { useState, useEffect } = React;
 
-        // 아이콘 컴포넌트들 (설치 없이 직접 그림)
         const Icons = {
-            Plus: ({size=24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>,
-            Trash: ({size=24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>,
-            Check: ({size=24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>,
-            Clock: ({size=24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>,
-            Grip: ({size=24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>,
-            Calendar: ({size=24}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            Trash: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>,
+            Refresh: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>,
+            Plus: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>,
+            Wallet: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"></path><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path></svg>,
+            X: () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>,
+            Coins: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg>,
+            Calendar: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>,
+            Settings: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
+            Target: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
         };
 
-        function App() {
-            const [todos, setTodos] = useState([
-                { id: 1, text: "LP판 사러 가기", deadline: "2024-10-25", completed: false },
-                { id: 3, text: "재즈 댄스 파티", deadline: "2024-10-31", completed: false },
-                { id: 2, text: "오래된 라디오 수리", deadline: "2024-10-26", completed: true },
+        function StockApp() {
+            // 계좌 데이터 (목표 금액/수익률 필드 추가)
+            const [accounts, setAccounts] = useState([
+                { id: 1, name: "메인 계좌", cashKRW: 1000000, cashUSD: 500, targetAmount: 50000000, targetRate: 20 },
+                { id: 2, name: "서브 계좌", cashKRW: 0, cashUSD: 0, targetAmount: 10000000, targetRate: 50 }
             ]);
-            const [inputText, setInputText] = useState("");
-            const [deadline, setDeadline] = useState("");
+            const [selectedAccount, setSelectedAccount] = useState(1);
             
-            const dragItem = useRef(null);
-            const dragOverItem = useRef(null);
+            const [viewMode, setViewMode] = useState('portfolio');
+            const [stocks, setStocks] = useState([
+                { id: 1, accountId: 1, name: "삼성전자", symbol: "KRW", quantity: 100, avgPrice: 72000, currentPrice: 74500, dividendAmount: 361, dividendDate: "2024-05-17" },
+                { id: 2, accountId: 1, name: "Realty Income", symbol: "USD", quantity: 50, avgPrice: 55, currentPrice: 52, dividendAmount: 0.263, dividendDate: "2024-06-15" },
+                { id: 3, accountId: 2, name: "Apple", symbol: "USD", quantity: 10, avgPrice: 180, currentPrice: 190, dividendAmount: 0.25, dividendDate: "2024-05-16" },
+            ]);
 
-            const addTodo = (e) => {
-                e.preventDefault();
-                if (!inputText.trim()) return;
-                const newTodo = { id: Date.now(), text: inputText, deadline: deadline, completed: false };
-                setTodos([newTodo, ...todos]);
-                setInputText("");
-                setDeadline("");
-            };
+            const [input, setInput] = useState({ name: "", symbol: "KRW", quantity: "", avgPrice: "", currentPrice: "" });
+            const [exchangeRate, setExchangeRate] = useState(1400);
+            const [isRateLoading, setIsRateLoading] = useState(false);
+            const [newAccountName, setNewAccountName] = useState("");
+            const [showAccountInput, setShowAccountInput] = useState(false);
 
-            const toggleComplete = (id) => {
-                setTodos(todos.map(todo => todo.id === id ? { ...todo, completed: !todo.completed } : todo));
-            };
+            // 계좌 수정 모달 상태
+            const [showSettingsModal, setShowSettingsModal] = useState(false);
+            const [editingAccount, setEditingAccount] = useState({ name: "", targetAmount: "", targetRate: "" });
 
-            const deleteTodo = (id) => {
-                setTodos(todos.filter(todo => todo.id !== id));
-            };
-
-            const handleDragStart = (e, index) => { dragItem.current = index; };
-            const handleDragEnter = (e, index) => { dragOverItem.current = index; };
-            const handleDragEnd = () => {
-                if (dragItem.current !== null && dragOverItem.current !== null) {
-                    const _todos = [...todos];
-                    const draggedItemContent = _todos.splice(dragItem.current, 1)[0];
-                    _todos.splice(dragOverItem.current, 0, draggedItemContent);
-                    setTodos(_todos);
+            const fetchExchangeRate = async () => {
+                setIsRateLoading(true);
+                try {
+                    const res = await fetch('https://open.er-api.com/v6/latest/USD');
+                    const data = await res.json();
+                    if (data?.rates?.KRW) setExchangeRate(Math.floor(data.rates.KRW));
+                } catch (error) {
+                    alert("환율 정보 로드 실패");
+                } finally {
+                    setIsRateLoading(false);
                 }
-                dragItem.current = null;
-                dragOverItem.current = null;
             };
+
+            useEffect(() => { fetchExchangeRate(); }, []);
+
+            const fmt = (num) => new Intl.NumberFormat('ko-KR').format(Math.round(num));
+            const fmtUSD = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+
+            // --- Handlers ---
+            const addStock = (e) => {
+                e.preventDefault();
+                if (!input.name || !input.quantity || !input.avgPrice) return;
+                const targetAccountId = selectedAccount === 0 ? accounts[0].id : selectedAccount;
+                const newStock = {
+                    id: Date.now(),
+                    accountId: targetAccountId,
+                    name: input.name,
+                    symbol: input.symbol,
+                    quantity: Number(input.quantity),
+                    avgPrice: Number(input.avgPrice),
+                    currentPrice: Number(input.currentPrice) || Number(input.avgPrice),
+                    dividendAmount: 0, dividendDate: ""
+                };
+                setStocks([...stocks, newStock]);
+                setInput({ name: "", symbol: "KRW", quantity: "", avgPrice: "", currentPrice: "" });
+            };
+
+            const deleteStock = (id) => { if(confirm("삭제하시겠습니까?")) setStocks(stocks.filter(s => s.id !== id)); };
+            const updateStockField = (id, field, value) => { setStocks(stocks.map(s => s.id === id ? { ...s, [field]: value } : s)); };
+
+            const addAccount = () => {
+                if(newAccountName.trim()) {
+                    const newId = Date.now();
+                    setAccounts([...accounts, { id: newId, name: newAccountName, cashKRW: 0, cashUSD: 0, targetAmount: 0, targetRate: 0 }]);
+                    setNewAccountName("");
+                    setShowAccountInput(false);
+                    setSelectedAccount(newId);
+                }
+            };
+            
+            const deleteAccount = (id, e) => {
+                e.stopPropagation();
+                if(accounts.length <= 1) return alert("최소 1개의 계좌가 필요합니다.");
+                if(confirm("계좌 삭제 시 포함된 종목과 정보가 모두 삭제됩니다.")) {
+                    setAccounts(accounts.filter(a => a.id !== id));
+                    setStocks(stocks.filter(s => s.accountId !== id));
+                    if(selectedAccount === id) setSelectedAccount(0);
+                }
+            };
+
+            const updateAccountCash = (id, type, amount) => {
+                setAccounts(accounts.map(a => a.id === id ? { ...a, [type]: Number(amount) } : a));
+            };
+
+            // 계좌 설정 모달 열기
+            const openSettings = (account) => {
+                setEditingAccount({ ...account });
+                setShowSettingsModal(true);
+            };
+
+            // 계좌 설정 저장
+            const saveAccountSettings = () => {
+                setAccounts(accounts.map(a => a.id === editingAccount.id ? { ...a, name: editingAccount.name, targetAmount: Number(editingAccount.targetAmount), targetRate: Number(editingAccount.targetRate) } : a));
+                setShowSettingsModal(false);
+            };
+
+            // --- Calculations ---
+            const filteredStocks = selectedAccount === 0 ? stocks : stocks.filter(s => s.accountId === selectedAccount);
+            const filteredAccounts = selectedAccount === 0 ? accounts : accounts.filter(a => a.id === selectedAccount);
+
+            let totalStockVal = 0, totalInvest = 0, totalCashKRW = 0, totalCashUSD = 0, totalDividend = 0;
+            let combinedTargetAmount = 0;
+
+            filteredAccounts.forEach(acc => {
+                totalCashKRW += acc.cashKRW;
+                totalCashUSD += acc.cashUSD;
+                combinedTargetAmount += (acc.targetAmount || 0);
+            });
+
+            filteredStocks.forEach(s => {
+                const rate = s.symbol === 'USD' ? exchangeRate : 1;
+                totalInvest += (s.avgPrice * s.quantity) * rate;
+                totalStockVal += (s.currentPrice * s.quantity) * rate;
+                const divAmount = Number(s.dividendAmount) || 0;
+                totalDividend += (divAmount * s.quantity) * rate;
+            });
+
+            const stockProfit = totalStockVal - totalInvest;
+            const stockProfitRate = totalInvest === 0 ? 0 : (stockProfit / totalInvest) * 100;
+            const totalCashVal = totalCashKRW + (totalCashUSD * exchangeRate);
+            const totalAssets = totalStockVal + totalCashVal;
+            
+            // 목표 달성률 계산
+            const achievementRate = combinedTargetAmount > 0 ? (totalAssets / combinedTargetAmount) * 100 : 0;
 
             return (
-                <div className="relative z-10">
-                    {/* Main Card */}
-                    <div className="bg-retro-paper rounded-xl shadow-[12px_12px_0px_0px_rgba(44,36,27,1)] border-[3px] border-retro-ink overflow-hidden relative">
-                        
-                        {/* Header */}
-                        <div className="bg-retro-accent p-6 border-b-[3px] border-retro-ink flex items-center justify-between relative overflow-hidden">
-                            <div className="absolute top-0 left-0 w-full h-full opacity-10" style={{ backgroundImage: 'repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 0, transparent 50%)', backgroundSize: '10px 10px' }}></div>
-                            <div className="relative z-10">
-                                <h1 className="text-4xl font-black tracking-tight uppercase text-retro-paper transform -rotate-1 drop-shadow-md" style={{ textShadow: '3px 3px 0px #2c241b' }}>Tasks</h1>
-                                <p className="text-retro-ink text-xs font-bold bg-retro-paper inline-block px-2 py-0.5 mt-2 rounded-sm border border-retro-ink shadow-[2px_2px_0px_0px_rgba(44,36,27,0.5)]">PROJECT: DAILY LIFE</p>
+                <div className="max-w-4xl mx-auto p-4 pb-40">
+                    
+                    {/* Header */}
+                    <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                            <span className="bg-gray-800 text-white p-1.5 rounded-lg"><Icons.Wallet /></span>
+                            마이 포트폴리오
+                        </h1>
+                        <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100">
+                            <span className="text-sm text-gray-500">USD 환율:</span>
+                            <div className="flex items-center gap-1">
+                                <span className="text-gray-500 font-bold">₩</span>
+                                <input 
+                                    type="number" 
+                                    value={exchangeRate}
+                                    onChange={(e) => setExchangeRate(Number(e.target.value))}
+                                    className="w-16 font-bold text-gray-800 bg-transparent focus:outline-none border-b border-gray-300 text-center"
+                                />
                             </div>
-                            <div className="h-14 w-14 bg-retro-secondary rounded-full flex items-center justify-center border-[3px] border-retro-paper shadow-lg transform rotate-12">
-                                <Icons.Check size={32} className="text-retro-paper" />
-                            </div>
-                        </div>
-
-                        {/* Input */}
-                        <div className="p-5 bg-retro-highlight border-b-[3px] border-retro-ink">
-                            <form onSubmit={addTodo} className="flex flex-col gap-3">
-                                <input type="text" value={inputText} onChange={(e) => setInputText(e.target.value)} placeholder="새로운 할 일을 입력하세요..." className="w-full bg-retro-paper border-[2px] border-retro-ink px-4 py-3 text-lg focus:outline-none focus:ring-4 focus:ring-retro-accent/50 placeholder-retro-ink/40 rounded-lg transition-all" />
-                                <div className="flex gap-2">
-                                    <div className="relative flex-1 group">
-                                        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-retro-ink/60"><Icons.Clock size={18} /></div>
-                                        <input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} className="w-full bg-retro-paper border-[2px] border-retro-ink pl-10 pr-3 py-2.5 focus:outline-none focus:ring-4 focus:ring-retro-accent/50 text-sm rounded-lg transition-all font-bold text-retro-ink/80" />
-                                    </div>
-                                    <button type="submit" className="bg-retro-secondary text-retro-paper px-5 py-2 border-[2px] border-retro-ink rounded-lg font-bold hover:bg-[#2e3146] active:translate-y-0.5 transition-all flex items-center gap-2 shadow-[3px_3px_0px_0px_rgba(44,36,27,1)]"><Icons.Plus size={20} /></button>
-                                </div>
-                            </form>
-                        </div>
-
-                        {/* List */}
-                        <div className="bg-retro-paper min-h-[300px] relative">
-                            <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'linear-gradient(transparent 27px, #e5e5e5 28px)', backgroundSize: '100% 28px', marginTop: '14px' }}></div>
-                            <ul className="relative z-10 p-4 space-y-3">
-                                {todos.map((todo, index) => (
-                                    <li key={todo.id} draggable onDragStart={(e) => handleDragStart(e, index)} onDragEnter={(e) => handleDragEnter(e, index)} onDragEnd={handleDragEnd} onDragOver={(e) => e.preventDefault()} 
-                                        className={`group relative flex items-start gap-3 p-3 rounded-lg border-[2px] transition-all duration-200 cursor-default ${todo.completed ? 'bg-[#e5e5e5]/30 border-transparent opacity-70' : 'bg-white border-retro-ink shadow-[4px_4px_0px_0px_rgba(224,122,95,0.3)] hover:shadow-[4px_4px_0px_0px_rgba(224,122,95,1)] hover:-translate-y-0.5'}`}>
-                                        <div className="cursor-move pt-1.5 text-retro-ink/20 group-hover:text-retro-ink transition-colors"><Icons.Grip size={18} /></div>
-                                        <div className="flex-1 min-w-0 pt-0.5">
-                                            <div className="flex justify-between items-start">
-                                                <span className={`text-lg font-bold leading-tight transition-all duration-300 ${todo.completed ? 'line-through decoration-retro-accent decoration-[3px] text-retro-ink/40' : 'text-retro-ink'}`}>{todo.text}</span>
-                                                <button onClick={() => deleteTodo(todo.id)} className="opacity-0 group-hover:opacity-100 text-retro-accent hover:text-[#d05030] transition-opacity ml-2 p-1"><Icons.Trash size={16} /></button>
-                                            </div>
-                                            {todo.deadline && <div className="flex items-center gap-1.5 text-xs font-bold mt-1.5 text-retro-green"><Icons.Calendar size={12} /><span className="tracking-wide">{todo.deadline}</span></div>}
-                                        </div>
-                                        <button onClick={() => toggleComplete(todo.id)} className={`flex-shrink-0 w-7 h-7 border-[2px] border-retro-ink rounded flex items-center justify-center transition-all shadow-[2px_2px_0px_0px_rgba(44,36,27,0.2)] ${todo.completed ? 'bg-retro-green border-retro-ink' : 'bg-white hover:bg-retro-highlight'}`}>{todo.completed && <Icons.Check size={18} className="text-retro-paper" />}</button>
-                                        {todo.completed && <div className="absolute left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 -rotate-[15deg] pointer-events-none z-20"><div className="border-[3px] border-retro-accent text-retro-accent px-3 py-1 text-lg font-black uppercase tracking-widest opacity-90 animate-pulse" style={{ mixBlendMode: 'multiply' }}>DONE</div></div>}
-                                    </li>
-                                ))}
-                                {todos.length === 0 && <li className="text-center py-10 opacity-40 font-bold tracking-widest text-retro-ink">NO TASKS YET...</li>}
-                            </ul>
+                            <button onClick={fetchExchangeRate} className={`p-1.5 rounded-full hover:bg-gray-100 ${isRateLoading ? 'animate-spin' : ''}`}><Icons.Refresh /></button>
                         </div>
                     </div>
+
+                    {/* Account Tabs */}
+                    <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2 no-scrollbar">
+                        <button onClick={() => setSelectedAccount(0)} className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-all border ${selectedAccount === 0 ? 'tab-active border-transparent' : 'tab-inactive border-gray-200 hover:bg-gray-50'}`}>전체 통합</button>
+                        {accounts.map(acc => (
+                            <div key={acc.id} className="relative group flex items-center">
+                                <button onClick={() => setSelectedAccount(acc.id)} className={`pl-4 pr-10 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-all border ${selectedAccount === acc.id ? 'tab-active border-transparent' : 'tab-inactive border-gray-200 hover:bg-gray-50'}`}>{acc.name}</button>
+                                {selectedAccount === acc.id && (
+                                    <div className="absolute right-2 flex items-center gap-1">
+                                        <button onClick={(e) => { e.stopPropagation(); openSettings(acc); }} className="p-1 rounded-full text-gray-400 hover:text-white hover:bg-gray-600 transition-colors" title="계좌 설정"><Icons.Settings /></button>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        {showAccountInput ? (
+                            <div className="flex items-center bg-white rounded-lg border border-indigo-200 px-2 py-1 shadow-sm"><input autoFocus type="text" placeholder="계좌명" value={newAccountName} onChange={e => setNewAccountName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addAccount()} className="w-24 text-sm bg-transparent focus:outline-none px-1" /><button onClick={addAccount} className="text-indigo-600 p-1"><Icons.Plus /></button></div>
+                        ) : (
+                            <button onClick={() => setShowAccountInput(true)} className="px-3 py-2 rounded-lg text-sm font-bold bg-gray-200 text-gray-500 hover:bg-gray-300 flex items-center gap-1"><Icons.Plus /></button>
+                        )}
+                    </div>
+
+                    {/* Goal & Progress Card (NEW) */}
+                    {(selectedAccount !== 0 || combinedTargetAmount > 0) && (
+                        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-6">
+                            <div className="flex justify-between items-end mb-2">
+                                <h3 className="text-gray-500 text-xs font-bold flex items-center gap-1"><Icons.Target /> 목표 달성 현황</h3>
+                                <div className="text-right">
+                                    <span className="text-xs text-gray-400">목표 금액: {fmt(combinedTargetAmount)}원</span>
+                                    {selectedAccount !== 0 && accounts.find(a => a.id === selectedAccount)?.targetRate > 0 && (
+                                         <span className="text-xs text-indigo-500 ml-2 font-bold">목표 수익률: {accounts.find(a => a.id === selectedAccount).targetRate}%</span>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="relative h-4 bg-gray-100 rounded-full overflow-hidden">
+                                <div 
+                                    className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-400 to-indigo-500 transition-all duration-1000 ease-out"
+                                    style={{ width: `${Math.min(achievementRate, 100)}%` }}
+                                ></div>
+                            </div>
+                            <div className="flex justify-between mt-1 text-xs font-bold">
+                                <span className="text-gray-600">현재: {fmt(totalAssets)}원</span>
+                                <span className="text-indigo-600">{achievementRate.toFixed(1)}% 달성</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Cash Card */}
+                    {selectedAccount !== 0 && (
+                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-indigo-100 mb-6 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+                            <h3 className="text-gray-500 text-xs font-bold mb-3 flex items-center gap-1"><Icons.Wallet /> 계좌 예수금 (현금)</h3>
+                            <div className="grid grid-cols-2 gap-8">
+                                <div>
+                                    <label className="text-xs text-gray-400 block mb-1">원화 예수금 (KRW)</label>
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-lg font-bold">₩</span>
+                                        <input type="number" value={accounts.find(a => a.id === selectedAccount).cashKRW} onChange={(e) => updateAccountCash(selectedAccount, 'cashKRW', e.target.value)} className="text-xl font-bold text-gray-800 w-full focus:outline-none border-b border-transparent focus:border-indigo-300 bg-transparent" placeholder="0" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-xs text-gray-400 block mb-1">달러 예수금 (USD)</label>
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-lg font-bold text-blue-500">$</span>
+                                        <input type="number" value={accounts.find(a => a.id === selectedAccount).cashUSD} onChange={(e) => updateAccountCash(selectedAccount, 'cashUSD', e.target.value)} className="text-xl font-bold text-blue-600 w-full focus:outline-none border-b border-transparent focus:border-indigo-300 bg-transparent" placeholder="0" />
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-1">≈ {fmt(accounts.find(a => a.id === selectedAccount).cashUSD * exchangeRate)}원</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Total Asset Summary */}
+                    <div className="bg-gray-900 text-white p-6 rounded-2xl shadow-lg mb-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div><p className="text-gray-400 text-xs font-bold mb-1">총 자산 (주식 + 예수금)</p><p className="text-3xl font-bold">{fmt(totalAssets)}원</p></div>
+                            <div className="flex gap-6 col-span-2">
+                                <div><p className="text-gray-400 text-xs mb-1">순수 주식 가치</p><p className="text-xl font-semibold">{fmt(totalStockVal)}원</p></div>
+                                <div><p className="text-gray-400 text-xs mb-1">총 예수금</p><p className="text-xl font-semibold">{fmt(totalCashVal)}원</p></div>
+                                <div><p className="text-gray-400 text-xs mb-1">투자 손익</p><p className={`text-xl font-semibold ${stockProfit >= 0 ? 'text-red-400' : 'text-blue-400'}`}>{stockProfit > 0 ? '+' : ''}{fmt(stockProfit)} ({stockProfitRate.toFixed(2)}%)</p></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* View Toggle Switch */}
+                    <div className="flex justify-center mb-6">
+                        <div className="bg-white p-1 rounded-xl border border-gray-200 shadow-sm flex">
+                            <button onClick={() => setViewMode('portfolio')} className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'portfolio' ? 'bg-gray-800 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}>자산 현황</button>
+                            <button onClick={() => setViewMode('dividend')} className={`px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${viewMode === 'dividend' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}><Icons.Coins size={14} /> 배당 관리</button>
+                        </div>
+                    </div>
+
+                    {/* Content Area */}
+                    {viewMode === 'portfolio' ? (
+                        <div className="grid grid-cols-1 gap-3 mb-8">
+                            {filteredStocks.map(stock => {
+                                const isProfit = stock.currentPrice >= stock.avgPrice;
+                                const profitAmount = (stock.currentPrice - stock.avgPrice) * stock.quantity;
+                                const rate = ((stock.currentPrice - stock.avgPrice) / stock.avgPrice) * 100;
+                                const currencyStr = stock.symbol === 'USD' ? '$' : '₩';
+                                const displayProfit = stock.symbol === 'USD' ? fmtUSD(profitAmount) : fmt(profitAmount);
+
+                                return (
+                                    <div key={stock.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:border-indigo-100 transition-all group">
+                                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                            <div className="flex items-center gap-4 w-full sm:w-auto">
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 ${stock.symbol === 'USD' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>{stock.symbol}</div>
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <h3 className="font-bold text-gray-800">{stock.name}</h3>
+                                                        {selectedAccount === 0 && <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">{accounts.find(a => a.id === stock.accountId)?.name}</span>}
+                                                    </div>
+                                                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                                        <div className="flex items-center bg-gray-50 rounded px-1.5 py-0.5 border border-gray-100">
+                                                            <input type="number" value={stock.quantity} onChange={(e) => updateStockField(stock.id, 'quantity', e.target.value)} className="w-12 bg-transparent text-xs text-gray-600 font-medium focus:outline-none text-right" />
+                                                            <span className="text-[10px] text-gray-400 ml-0.5">주</span>
+                                                        </div>
+                                                        <div className="flex items-center bg-gray-50 rounded px-1.5 py-0.5 border border-gray-100">
+                                                            <span className="text-[10px] text-gray-400 mr-0.5">{currencyStr}</span>
+                                                            <input type="number" value={stock.avgPrice} onChange={(e) => updateStockField(stock.id, 'avgPrice', e.target.value)} className="w-16 bg-transparent text-xs text-gray-600 font-medium focus:outline-none" />
+                                                            <span className="text-[10px] text-gray-400 ml-0.5">평단</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-between w-full sm:w-auto sm:justify-end gap-6 pl-14 sm:pl-0">
+                                                <div className="flex flex-col items-end">
+                                                    <label className="text-[10px] text-gray-400 mb-0.5">현재가 수정</label>
+                                                    <div className="flex items-center bg-gray-50 px-2 py-1 rounded border border-gray-200 focus-within:border-indigo-500 w-24">
+                                                        <span className="text-xs text-gray-500 mr-1">{currencyStr}</span>
+                                                        <input type="number" value={stock.currentPrice} onChange={(e) => updateStockField(stock.id, 'currentPrice', e.target.value)} className="w-full bg-transparent text-sm font-bold text-gray-800 text-right focus:outline-none" />
+                                                    </div>
+                                                </div>
+                                                <div className={`text-right w-24 ${isProfit ? 'text-up' : 'text-down'}`}>
+                                                    <p className="font-bold text-lg">{rate > 0 ? '+' : ''}{rate.toFixed(2)}%</p>
+                                                    <p className="text-xs font-medium opacity-80">{profitAmount > 0 ? '+' : ''}{displayProfit}</p>
+                                                </div>
+                                                <button onClick={() => deleteStock(stock.id)} className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors hidden sm:block opacity-0 group-hover:opacity-100"><Icons.Trash /></button>
+                                                <button onClick={() => deleteStock(stock.id)} className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors sm:hidden block"><Icons.Trash /></button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-6 text-white shadow-md mb-6">
+                                <h3 className="text-indigo-100 text-xs font-bold mb-1">연간 예상 배당금 총액 (세전)</h3>
+                                <div className="flex items-end gap-2"><p className="text-3xl font-bold">{fmt(totalDividend)}원</p><p className="text-indigo-200 text-sm mb-1.5">(월 평균 ≈ {fmt(totalDividend / 12)}원)</p></div>
+                                <div className="mt-4 flex gap-4 text-xs text-indigo-100"><div className="bg-white/20 px-3 py-1.5 rounded-lg">배당 수익률: <span className="font-bold text-white">{(totalInvest > 0 ? (totalDividend/totalInvest)*100 : 0).toFixed(2)}%</span></div></div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
+                                {filteredStocks.map(stock => {
+                                    const currencyStr = stock.symbol === 'USD' ? '$' : '₩';
+                                    const dividendYield = (stock.dividendAmount / stock.currentPrice) * 100;
+                                    const totalStockDiv = stock.dividendAmount * stock.quantity;
+                                    return (
+                                        <div key={stock.id} className="bg-white p-4 rounded-xl shadow-sm border border-indigo-50 relative overflow-hidden group">
+                                            <div className="flex justify-between items-start mb-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] ${stock.symbol === 'USD' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>{stock.symbol}</div>
+                                                    <div><h3 className="font-bold text-gray-800 text-sm">{stock.name}</h3><p className="text-xs text-gray-400">{stock.quantity}주 보유</p></div>
+                                                </div>
+                                                <div className="text-right"><p className="text-xs text-gray-400">연간 예상 배당</p><p className="font-bold text-indigo-600">{stock.symbol === 'USD' ? fmtUSD(totalStockDiv) : fmt(totalStockDiv) + '원'}</p></div>
+                                            </div>
+                                            <div className="bg-gray-50 rounded-lg p-3 grid grid-cols-2 gap-3">
+                                                <div><label className="text-[10px] text-gray-400 block mb-1">주당 배당금 ({currencyStr})</label><input type="number" value={stock.dividendAmount} onChange={(e) => updateStockField(stock.id, 'dividendAmount', e.target.value)} className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-sm font-bold text-gray-700 focus:outline-none focus:border-indigo-400" placeholder="0" /></div>
+                                                <div><label className="text-[10px] text-gray-400 block mb-1">배당 기준일</label><input type="date" value={stock.dividendDate} onChange={(e) => updateStockField(stock.id, 'dividendDate', e.target.value)} className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-xs text-gray-700 focus:outline-none focus:border-indigo-400" /></div>
+                                            </div>
+                                            <div className="mt-2 flex justify-between items-center px-1"><span className="text-[10px] text-gray-400">시가 배당률: {stock.dividendAmount > 0 ? dividendYield.toFixed(2) : 0}%</span>{stock.dividendDate && (<span className="text-[10px] text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full flex items-center gap-1"><Icons.Calendar size={10} /> {stock.dividendDate}</span>)}</div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Fixed Bottom Input */}
+                    <div className="fixed bottom-4 left-4 right-4 max-w-4xl mx-auto z-50">
+                        <div className="bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-gray-200/50">
+                            <form onSubmit={addStock} className="flex flex-col sm:flex-row gap-2">
+                                <div className="flex gap-2 flex-1"><input type="text" placeholder="종목명 (예: SCHD)" value={input.name} onChange={e => setInput({...input, name: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" /><select value={input.symbol} onChange={e => setInput({...input, symbol: e.target.value})} className="bg-gray-50 border border-gray-200 rounded-lg px-2 py-2 text-sm min-w-[70px]"><option value="KRW">KRW</option><option value="USD">USD</option></select></div>
+                                <div className="flex gap-2 flex-1"><input type="number" placeholder="수량" value={input.quantity} onChange={e => setInput({...input, quantity: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" /><input type="number" placeholder="평단가" value={input.avgPrice} onChange={e => setInput({...input, avgPrice: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" /></div>
+                                <button type="submit" disabled={selectedAccount === 0} className={`px-6 py-2 rounded-lg text-sm font-bold text-white whitespace-nowrap transition-colors ${selectedAccount === 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-gray-900 hover:bg-black'}`}>{selectedAccount === 0 ? "계좌선택" : "추가"}</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    {/* Settings Modal */}
+                    {showSettingsModal && (
+                        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm modal-overlay" onClick={() => setShowSettingsModal(false)}></div>
+                            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative z-10 animate-[fadeIn_0.2s_ease-out]">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2"><Icons.Settings /> 계좌 설정</h3>
+                                    <button onClick={() => setShowSettingsModal(false)} className="p-1 rounded-full hover:bg-gray-100 text-gray-500"><Icons.X /></button>
+                                </div>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-gray-500 mb-1 block">계좌 이름</label>
+                                        <input type="text" value={editingAccount.name} onChange={(e) => setEditingAccount({...editingAccount, name: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-xs font-bold text-gray-500 mb-1 block">목표 자산 (원)</label>
+                                            <input type="number" value={editingAccount.targetAmount} onChange={(e) => setEditingAccount({...editingAccount, targetAmount: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="0" />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-gray-500 mb-1 block">목표 수익률 (%)</label>
+                                            <input type="number" value={editingAccount.targetRate} onChange={(e) => setEditingAccount({...editingAccount, targetRate: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="0" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex gap-3 mt-8">
+                                    <button onClick={() => deleteAccount(editingAccount.id, { stopPropagation: () => {} })} className="flex-1 px-4 py-2.5 rounded-lg text-sm font-bold text-red-500 bg-red-50 hover:bg-red-100 transition-colors">계좌 삭제</button>
+                                    <button onClick={saveAccountSettings} className="flex-[2] px-4 py-2.5 rounded-lg text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">저장하기</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                 </div>
             );
         }
-
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        root.render(<StockApp />);
     </script>
 </body>
 </html>
