@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>계좌별 주식 & 배당 통합 트래커</title>
+    <title>계좌별 주식 & 배당 통합 트래커 (자동저장)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
@@ -45,31 +45,47 @@
             Coins: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg>,
             Calendar: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>,
             Settings: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
-            Target: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+            Target: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>,
+            RotateCcw: () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
         };
 
-        function StockApp() {
-            // 계좌 데이터 (목표 금액/수익률 필드 추가)
-            const [accounts, setAccounts] = useState([
-                { id: 1, name: "메인 계좌", cashKRW: 1000000, cashUSD: 500, targetAmount: 50000000, targetRate: 20 },
-                { id: 2, name: "서브 계좌", cashKRW: 0, cashUSD: 0, targetAmount: 10000000, targetRate: 50 }
-            ]);
-            const [selectedAccount, setSelectedAccount] = useState(1);
-            
-            const [viewMode, setViewMode] = useState('portfolio');
-            const [stocks, setStocks] = useState([
-                { id: 1, accountId: 1, name: "삼성전자", symbol: "KRW", quantity: 100, avgPrice: 72000, currentPrice: 74500, dividendAmount: 361, dividendDate: "2024-05-17" },
-                { id: 2, accountId: 1, name: "Realty Income", symbol: "USD", quantity: 50, avgPrice: 55, currentPrice: 52, dividendAmount: 0.263, dividendDate: "2024-06-15" },
-                { id: 3, accountId: 2, name: "Apple", symbol: "USD", quantity: 10, avgPrice: 180, currentPrice: 190, dividendAmount: 0.25, dividendDate: "2024-05-16" },
-            ]);
+        // 기본 초기 데이터 (리셋 시 사용)
+        const INITIAL_ACCOUNTS = [
+            { id: 1, name: "메인 계좌", cashKRW: 0, cashUSD: 0, targetAmount: 50000000, targetRate: 20 },
+            { id: 2, name: "서브 계좌", cashKRW: 0, cashUSD: 0, targetAmount: 10000000, targetRate: 50 }
+        ];
+        const INITIAL_STOCKS = [
+            { id: 1, accountId: 1, name: "예시: 삼성전자", symbol: "KRW", quantity: 10, avgPrice: 70000, currentPrice: 72000, dividendAmount: 361, dividendDate: "" },
+        ];
 
+        function StockApp() {
+            // --- [수정됨] LocalStorage에서 데이터 불러오기 (없으면 초기값) ---
+            const [accounts, setAccounts] = useState(() => {
+                const saved = localStorage.getItem('stockApp_accounts');
+                return saved ? JSON.parse(saved) : INITIAL_ACCOUNTS;
+            });
+            
+            const [stocks, setStocks] = useState(() => {
+                const saved = localStorage.getItem('stockApp_stocks');
+                return saved ? JSON.parse(saved) : INITIAL_STOCKS;
+            });
+
+            // --- [수정됨] 데이터 변경 시마다 LocalStorage에 자동 저장 ---
+            useEffect(() => {
+                localStorage.setItem('stockApp_accounts', JSON.stringify(accounts));
+            }, [accounts]);
+
+            useEffect(() => {
+                localStorage.setItem('stockApp_stocks', JSON.stringify(stocks));
+            }, [stocks]);
+
+            const [selectedAccount, setSelectedAccount] = useState(1);
+            const [viewMode, setViewMode] = useState('portfolio');
             const [input, setInput] = useState({ name: "", symbol: "KRW", quantity: "", avgPrice: "", currentPrice: "" });
             const [exchangeRate, setExchangeRate] = useState(1400);
             const [isRateLoading, setIsRateLoading] = useState(false);
             const [newAccountName, setNewAccountName] = useState("");
             const [showAccountInput, setShowAccountInput] = useState(false);
-
-            // 계좌 수정 모달 상태
             const [showSettingsModal, setShowSettingsModal] = useState(false);
             const [editingAccount, setEditingAccount] = useState({ name: "", targetAmount: "", targetRate: "" });
 
@@ -80,7 +96,7 @@
                     const data = await res.json();
                     if (data?.rates?.KRW) setExchangeRate(Math.floor(data.rates.KRW));
                 } catch (error) {
-                    alert("환율 정보 로드 실패");
+                    console.error("환율 로드 실패");
                 } finally {
                     setIsRateLoading(false);
                 }
@@ -137,16 +153,26 @@
                 setAccounts(accounts.map(a => a.id === id ? { ...a, [type]: Number(amount) } : a));
             };
 
-            // 계좌 설정 모달 열기
             const openSettings = (account) => {
                 setEditingAccount({ ...account });
                 setShowSettingsModal(true);
             };
 
-            // 계좌 설정 저장
             const saveAccountSettings = () => {
                 setAccounts(accounts.map(a => a.id === editingAccount.id ? { ...a, name: editingAccount.name, targetAmount: Number(editingAccount.targetAmount), targetRate: Number(editingAccount.targetRate) } : a));
                 setShowSettingsModal(false);
+            };
+
+            // [추가됨] 전체 데이터 초기화 기능
+            const resetAllData = () => {
+                if(confirm("모든 데이터를 지우고 초기 상태로 되돌리시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
+                    localStorage.removeItem('stockApp_accounts');
+                    localStorage.removeItem('stockApp_stocks');
+                    setAccounts(INITIAL_ACCOUNTS);
+                    setStocks(INITIAL_STOCKS);
+                    setSelectedAccount(1);
+                    alert("초기화되었습니다.");
+                }
             };
 
             // --- Calculations ---
@@ -175,7 +201,6 @@
             const totalCashVal = totalCashKRW + (totalCashUSD * exchangeRate);
             const totalAssets = totalStockVal + totalCashVal;
             
-            // 목표 달성률 계산
             const achievementRate = combinedTargetAmount > 0 ? (totalAssets / combinedTargetAmount) * 100 : 0;
 
             return (
@@ -187,18 +212,25 @@
                             <span className="bg-gray-800 text-white p-1.5 rounded-lg"><Icons.Wallet /></span>
                             마이 포트폴리오
                         </h1>
-                        <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100">
-                            <span className="text-sm text-gray-500">USD 환율:</span>
-                            <div className="flex items-center gap-1">
-                                <span className="text-gray-500 font-bold">₩</span>
-                                <input 
-                                    type="number" 
-                                    value={exchangeRate}
-                                    onChange={(e) => setExchangeRate(Number(e.target.value))}
-                                    className="w-16 font-bold text-gray-800 bg-transparent focus:outline-none border-b border-gray-300 text-center"
-                                />
+                        <div className="flex items-center gap-2">
+                            {/* [추가됨] 리셋 버튼 */}
+                            <button onClick={resetAllData} className="text-xs text-gray-400 hover:text-red-500 hover:bg-red-50 px-2 py-1.5 rounded flex items-center gap-1 transition-colors mr-2">
+                                <Icons.RotateCcw /> 초기화
+                            </button>
+
+                            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100">
+                                <span className="text-sm text-gray-500">USD:</span>
+                                <div className="flex items-center gap-1">
+                                    <span className="text-gray-500 font-bold">₩</span>
+                                    <input 
+                                        type="number" 
+                                        value={exchangeRate}
+                                        onChange={(e) => setExchangeRate(Number(e.target.value))}
+                                        className="w-16 font-bold text-gray-800 bg-transparent focus:outline-none border-b border-gray-300 text-center"
+                                    />
+                                </div>
+                                <button onClick={fetchExchangeRate} className={`p-1.5 rounded-full hover:bg-gray-100 ${isRateLoading ? 'animate-spin' : ''}`}><Icons.Refresh /></button>
                             </div>
-                            <button onClick={fetchExchangeRate} className={`p-1.5 rounded-full hover:bg-gray-100 ${isRateLoading ? 'animate-spin' : ''}`}><Icons.Refresh /></button>
                         </div>
                     </div>
 
@@ -222,7 +254,7 @@
                         )}
                     </div>
 
-                    {/* Goal & Progress Card (NEW) */}
+                    {/* Goal & Progress Card */}
                     {(selectedAccount !== 0 || combinedTargetAmount > 0) && (
                         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-6">
                             <div className="flex justify-between items-end mb-2">
