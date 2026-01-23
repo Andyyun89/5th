@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>계좌별 주식 & 배당 통합 트래커 (자동저장)</title>
+    <title>계좌별 주식 & 배당 통합 트래커 (Pro)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
@@ -25,7 +25,6 @@
         input::-webkit-outer-spin-button,
         input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         
-        /* 모달 애니메이션 */
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .modal-overlay { animation: fadeIn 0.2s ease-out; }
     </style>
@@ -34,8 +33,9 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useMemo } = React;
 
+        // --- Icons ---
         const Icons = {
             Trash: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>,
             Refresh: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>,
@@ -46,49 +46,54 @@
             Calendar: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>,
             Settings: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
             Target: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>,
-            RotateCcw: () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            RotateCcw: () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>,
+            Search: () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
+            ExternalLink: () => <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>,
+            Sort: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="m21 8-4-4-4 4"/><path d="M17 4v16"/></svg>,
+            Globe: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
         };
 
-        // 기본 초기 데이터 (리셋 시 사용)
         const INITIAL_ACCOUNTS = [
             { id: 1, name: "메인 계좌", cashKRW: 0, cashUSD: 0, targetAmount: 50000000, targetRate: 20 },
             { id: 2, name: "서브 계좌", cashKRW: 0, cashUSD: 0, targetAmount: 10000000, targetRate: 50 }
         ];
+        
+        // frequency: '1'(연), '2'(반기), '4'(분기), '12'(월)
         const INITIAL_STOCKS = [
-            { id: 1, accountId: 1, name: "예시: 삼성전자", symbol: "KRW", quantity: 10, avgPrice: 70000, currentPrice: 72000, dividendAmount: 361, dividendDate: "" },
+            { id: 1, accountId: 1, name: "삼성전자", symbol: "KRW", quantity: 10, avgPrice: 70000, currentPrice: 72000, dividendAmount: 361, dividendDate: "2024-05-17", frequency: "4" },
         ];
 
         function StockApp() {
-            // --- [수정됨] LocalStorage에서 데이터 불러오기 (없으면 초기값) ---
+            // --- State ---
             const [accounts, setAccounts] = useState(() => {
                 const saved = localStorage.getItem('stockApp_accounts');
                 return saved ? JSON.parse(saved) : INITIAL_ACCOUNTS;
             });
-            
             const [stocks, setStocks] = useState(() => {
                 const saved = localStorage.getItem('stockApp_stocks');
                 return saved ? JSON.parse(saved) : INITIAL_STOCKS;
             });
 
-            // --- [수정됨] 데이터 변경 시마다 LocalStorage에 자동 저장 ---
-            useEffect(() => {
-                localStorage.setItem('stockApp_accounts', JSON.stringify(accounts));
-            }, [accounts]);
-
-            useEffect(() => {
-                localStorage.setItem('stockApp_stocks', JSON.stringify(stocks));
-            }, [stocks]);
+            // Auto-save
+            useEffect(() => { localStorage.setItem('stockApp_accounts', JSON.stringify(accounts)); }, [accounts]);
+            useEffect(() => { localStorage.setItem('stockApp_stocks', JSON.stringify(stocks)); }, [stocks]);
 
             const [selectedAccount, setSelectedAccount] = useState(1);
-            const [viewMode, setViewMode] = useState('portfolio');
+            const [viewMode, setViewMode] = useState('portfolio'); // 'portfolio', 'dividend'
+            const [displayCurrency, setDisplayCurrency] = useState('KRW'); // 'KRW', 'USD'
+            const [sortOption, setSortOption] = useState('assetDesc'); // 정렬 옵션
+
             const [input, setInput] = useState({ name: "", symbol: "KRW", quantity: "", avgPrice: "", currentPrice: "" });
             const [exchangeRate, setExchangeRate] = useState(1400);
             const [isRateLoading, setIsRateLoading] = useState(false);
+            
+            // UI States
             const [newAccountName, setNewAccountName] = useState("");
             const [showAccountInput, setShowAccountInput] = useState(false);
             const [showSettingsModal, setShowSettingsModal] = useState(false);
             const [editingAccount, setEditingAccount] = useState({ name: "", targetAmount: "", targetRate: "" });
 
+            // --- Helpers ---
             const fetchExchangeRate = async () => {
                 setIsRateLoading(true);
                 try {
@@ -101,11 +106,34 @@
                     setIsRateLoading(false);
                 }
             };
-
             useEffect(() => { fetchExchangeRate(); }, []);
 
-            const fmt = (num) => new Intl.NumberFormat('ko-KR').format(Math.round(num));
-            const fmtUSD = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+            // 통합 포맷 함수 (설정된 통화에 따라 자동 변환 및 포맷팅)
+            // value: 원래 값, type: 원래 통화 ('KRW', 'USD')
+            const displayValue = (value, type) => {
+                let convertedVal = value;
+                
+                if (displayCurrency === 'KRW') {
+                    if (type === 'USD') convertedVal = value * exchangeRate;
+                } else { // displayCurrency === 'USD'
+                    if (type === 'KRW') convertedVal = value / exchangeRate;
+                }
+
+                if (displayCurrency === 'KRW') {
+                    return new Intl.NumberFormat('ko-KR').format(Math.round(convertedVal));
+                } else {
+                    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(convertedVal);
+                }
+            };
+
+            // 단순 변환 (계산용)
+            const convertToDisplay = (value, type) => {
+                if (displayCurrency === 'KRW') {
+                    return type === 'USD' ? value * exchangeRate : value;
+                } else {
+                    return type === 'KRW' ? value / exchangeRate : value;
+                }
+            };
 
             // --- Handlers ---
             const addStock = (e) => {
@@ -113,14 +141,11 @@
                 if (!input.name || !input.quantity || !input.avgPrice) return;
                 const targetAccountId = selectedAccount === 0 ? accounts[0].id : selectedAccount;
                 const newStock = {
-                    id: Date.now(),
-                    accountId: targetAccountId,
-                    name: input.name,
-                    symbol: input.symbol,
-                    quantity: Number(input.quantity),
-                    avgPrice: Number(input.avgPrice),
+                    id: Date.now(), accountId: targetAccountId,
+                    name: input.name, symbol: input.symbol,
+                    quantity: Number(input.quantity), avgPrice: Number(input.avgPrice),
                     currentPrice: Number(input.currentPrice) || Number(input.avgPrice),
-                    dividendAmount: 0, dividendDate: ""
+                    dividendAmount: 0, dividendDate: "", frequency: "1" // 기본 연배당
                 };
                 setStocks([...stocks, newStock]);
                 setInput({ name: "", symbol: "KRW", quantity: "", avgPrice: "", currentPrice: "" });
@@ -133,12 +158,9 @@
                 if(newAccountName.trim()) {
                     const newId = Date.now();
                     setAccounts([...accounts, { id: newId, name: newAccountName, cashKRW: 0, cashUSD: 0, targetAmount: 0, targetRate: 0 }]);
-                    setNewAccountName("");
-                    setShowAccountInput(false);
-                    setSelectedAccount(newId);
+                    setNewAccountName(""); setShowAccountInput(false); setSelectedAccount(newId);
                 }
             };
-            
             const deleteAccount = (id, e) => {
                 e.stopPropagation();
                 if(accounts.length <= 1) return alert("최소 1개의 계좌가 필요합니다.");
@@ -148,37 +170,29 @@
                     if(selectedAccount === id) setSelectedAccount(0);
                 }
             };
-
-            const updateAccountCash = (id, type, amount) => {
-                setAccounts(accounts.map(a => a.id === id ? { ...a, [type]: Number(amount) } : a));
-            };
-
-            const openSettings = (account) => {
-                setEditingAccount({ ...account });
-                setShowSettingsModal(true);
-            };
-
+            const updateAccountCash = (id, type, amount) => { setAccounts(accounts.map(a => a.id === id ? { ...a, [type]: Number(amount) } : a)); };
+            
+            const openSettings = (account) => { setEditingAccount({ ...account }); setShowSettingsModal(true); };
             const saveAccountSettings = () => {
                 setAccounts(accounts.map(a => a.id === editingAccount.id ? { ...a, name: editingAccount.name, targetAmount: Number(editingAccount.targetAmount), targetRate: Number(editingAccount.targetRate) } : a));
                 setShowSettingsModal(false);
             };
-
-            // [추가됨] 전체 데이터 초기화 기능
             const resetAllData = () => {
-                if(confirm("모든 데이터를 지우고 초기 상태로 되돌리시겠습니까? 이 작업은 되돌릴 수 없습니다.")) {
-                    localStorage.removeItem('stockApp_accounts');
-                    localStorage.removeItem('stockApp_stocks');
-                    setAccounts(INITIAL_ACCOUNTS);
-                    setStocks(INITIAL_STOCKS);
-                    setSelectedAccount(1);
-                    alert("초기화되었습니다.");
+                if(confirm("모든 데이터를 초기화하시겠습니까?")) {
+                    localStorage.removeItem('stockApp_accounts'); localStorage.removeItem('stockApp_stocks');
+                    setAccounts(INITIAL_ACCOUNTS); setStocks(INITIAL_STOCKS); setSelectedAccount(1); alert("초기화되었습니다.");
                 }
             };
+            const openDividendInfo = (stock) => {
+                let url = stock.symbol === "KRW" ? `https://finance.naver.com/search/search.naver?query=${encodeURIComponent(stock.name)}` : `https://finance.yahoo.com/quote/${encodeURIComponent(stock.name)}`;
+                window.open(url, '_blank');
+            };
 
-            // --- Calculations ---
-            const filteredStocks = selectedAccount === 0 ? stocks : stocks.filter(s => s.accountId === selectedAccount);
+            // --- Calculations & Filtering ---
+            const filteredStocksRaw = selectedAccount === 0 ? stocks : stocks.filter(s => s.accountId === selectedAccount);
             const filteredAccounts = selectedAccount === 0 ? accounts : accounts.filter(a => a.id === selectedAccount);
 
+            // 자산 계산
             let totalStockVal = 0, totalInvest = 0, totalCashKRW = 0, totalCashUSD = 0, totalDividend = 0;
             let combinedTargetAmount = 0;
 
@@ -188,62 +202,96 @@
                 combinedTargetAmount += (acc.targetAmount || 0);
             });
 
-            filteredStocks.forEach(s => {
-                const rate = s.symbol === 'USD' ? exchangeRate : 1;
-                totalInvest += (s.avgPrice * s.quantity) * rate;
-                totalStockVal += (s.currentPrice * s.quantity) * rate;
+            // 리스트 정렬 로직
+            const sortedStocks = useMemo(() => {
+                let sorted = [...filteredStocksRaw];
+                sorted.sort((a, b) => {
+                    const aVal = convertToDisplay(a.currentPrice * a.quantity, a.symbol);
+                    const bVal = convertToDisplay(b.currentPrice * b.quantity, b.symbol);
+                    const aProfit = (a.currentPrice - a.avgPrice) / a.avgPrice;
+                    const bProfit = (b.currentPrice - b.avgPrice) / b.avgPrice;
+
+                    switch(sortOption) {
+                        case 'assetDesc': return bVal - aVal;
+                        case 'assetAsc': return aVal - bVal;
+                        case 'profitDesc': return bProfit - aProfit;
+                        case 'profitAsc': return aProfit - bProfit;
+                        case 'nameAsc': return a.name.localeCompare(b.name);
+                        default: return 0;
+                    }
+                });
+                return sorted;
+            }, [filteredStocksRaw, sortOption, displayCurrency, exchangeRate]);
+
+            // 합계 계산
+            sortedStocks.forEach(s => {
+                totalInvest += convertToDisplay(s.avgPrice * s.quantity, s.symbol);
+                totalStockVal += convertToDisplay(s.currentPrice * s.quantity, s.symbol);
                 const divAmount = Number(s.dividendAmount) || 0;
-                totalDividend += (divAmount * s.quantity) * rate;
+                totalDividend += convertToDisplay(divAmount * s.quantity, s.symbol);
             });
 
             const stockProfit = totalStockVal - totalInvest;
             const stockProfitRate = totalInvest === 0 ? 0 : (stockProfit / totalInvest) * 100;
-            const totalCashVal = totalCashKRW + (totalCashUSD * exchangeRate);
+            const totalCashVal = convertToDisplay(totalCashKRW, 'KRW') + convertToDisplay(totalCashUSD, 'USD');
             const totalAssets = totalStockVal + totalCashVal;
-            
-            const achievementRate = combinedTargetAmount > 0 ? (totalAssets / combinedTargetAmount) * 100 : 0;
+            const targetAmountConv = convertToDisplay(combinedTargetAmount, 'KRW'); // 목표액은 기본적으로 KRW 입력 가정
+            const achievementRate = targetAmountConv > 0 ? (totalAssets / targetAmountConv) * 100 : 0;
+
+            // --- 월별 배당금 계산 로직 ---
+            const monthlyDividends = Array(12).fill(0);
+            sortedStocks.forEach(stock => {
+                if (stock.dividendAmount > 0 && stock.dividendDate) {
+                    const date = new Date(stock.dividendDate);
+                    const startMonth = date.getMonth(); // 0~11
+                    const freq = Number(stock.frequency || 1); // 연 지급 횟수 (1, 2, 4, 12)
+                    const interval = 12 / freq; // 지급 간격 (개월)
+                    const stockTotalDiv = convertToDisplay(stock.dividendAmount * stock.quantity, stock.symbol);
+
+                    // 지급 횟수만큼 반복하며 해당 월에 금액 추가
+                    for (let i = 0; i < freq; i++) {
+                        let targetMonth = (startMonth + (i * interval)) % 12;
+                        monthlyDividends[targetMonth] += (stockTotalDiv / freq); // 연간총액을 횟수로 나눠서 월별 배정
+                    }
+                }
+            });
 
             return (
                 <div className="max-w-4xl mx-auto p-4 pb-40">
                     
-                    {/* Header */}
+                    {/* --- [Header Area] --- */}
                     <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
                         <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
                             <span className="bg-gray-800 text-white p-1.5 rounded-lg"><Icons.Wallet /></span>
                             마이 포트폴리오
                         </h1>
-                        <div className="flex items-center gap-2">
-                            {/* [추가됨] 리셋 버튼 */}
-                            <button onClick={resetAllData} className="text-xs text-gray-400 hover:text-red-500 hover:bg-red-50 px-2 py-1.5 rounded flex items-center gap-1 transition-colors mr-2">
-                                <Icons.RotateCcw /> 초기화
-                            </button>
+                        <div className="flex items-center gap-2 flex-wrap justify-end">
+                            <button onClick={resetAllData} className="text-xs text-gray-400 hover:text-red-500 px-2 flex items-center gap-1 transition-colors"><Icons.RotateCcw /> 초기화</button>
+                            
+                            {/* [Currency Toggle] */}
+                            <div className="flex bg-white rounded-lg border border-gray-200 p-1">
+                                <button onClick={() => setDisplayCurrency('KRW')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${displayCurrency === 'KRW' ? 'bg-indigo-100 text-indigo-700' : 'text-gray-400 hover:bg-gray-50'}`}>KRW</button>
+                                <button onClick={() => setDisplayCurrency('USD')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${displayCurrency === 'USD' ? 'bg-blue-100 text-blue-700' : 'text-gray-400 hover:bg-gray-50'}`}>USD</button>
+                            </div>
 
-                            <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-100">
-                                <span className="text-sm text-gray-500">USD:</span>
-                                <div className="flex items-center gap-1">
-                                    <span className="text-gray-500 font-bold">₩</span>
-                                    <input 
-                                        type="number" 
-                                        value={exchangeRate}
-                                        onChange={(e) => setExchangeRate(Number(e.target.value))}
-                                        className="w-16 font-bold text-gray-800 bg-transparent focus:outline-none border-b border-gray-300 text-center"
-                                    />
-                                </div>
-                                <button onClick={fetchExchangeRate} className={`p-1.5 rounded-full hover:bg-gray-100 ${isRateLoading ? 'animate-spin' : ''}`}><Icons.Refresh /></button>
+                            {/* [Exchange Rate] */}
+                            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl shadow-sm border border-gray-100">
+                                <span className="text-xs text-gray-500 font-bold">1$ =</span>
+                                <input type="number" value={exchangeRate} onChange={(e) => setExchangeRate(Number(e.target.value))} className="w-12 text-sm font-bold text-gray-800 bg-transparent focus:outline-none border-b border-gray-300 text-center" />
+                                <span className="text-xs text-gray-500 font-bold">원</span>
+                                <button onClick={fetchExchangeRate} className={`text-gray-400 hover:text-indigo-600 ${isRateLoading ? 'animate-spin' : ''}`}><Icons.Refresh size={14} /></button>
                             </div>
                         </div>
                     </div>
 
-                    {/* Account Tabs */}
+                    {/* --- [Tabs] --- */}
                     <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2 no-scrollbar">
                         <button onClick={() => setSelectedAccount(0)} className={`px-4 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-all border ${selectedAccount === 0 ? 'tab-active border-transparent' : 'tab-inactive border-gray-200 hover:bg-gray-50'}`}>전체 통합</button>
                         {accounts.map(acc => (
                             <div key={acc.id} className="relative group flex items-center">
                                 <button onClick={() => setSelectedAccount(acc.id)} className={`pl-4 pr-10 py-2 rounded-lg text-sm font-bold whitespace-nowrap transition-all border ${selectedAccount === acc.id ? 'tab-active border-transparent' : 'tab-inactive border-gray-200 hover:bg-gray-50'}`}>{acc.name}</button>
                                 {selectedAccount === acc.id && (
-                                    <div className="absolute right-2 flex items-center gap-1">
-                                        <button onClick={(e) => { e.stopPropagation(); openSettings(acc); }} className="p-1 rounded-full text-gray-400 hover:text-white hover:bg-gray-600 transition-colors" title="계좌 설정"><Icons.Settings /></button>
-                                    </div>
+                                    <div className="absolute right-2 flex items-center gap-1"><button onClick={(e) => { e.stopPropagation(); openSettings(acc); }} className="p-1 rounded-full text-gray-400 hover:text-white hover:bg-gray-600 transition-colors"><Icons.Settings /></button></div>
                                 )}
                             </div>
                         ))}
@@ -254,123 +302,142 @@
                         )}
                     </div>
 
-                    {/* Goal & Progress Card */}
+                    {/* --- [Summary Cards] --- */}
+                    <div className="bg-gray-900 text-white p-6 rounded-2xl shadow-lg mb-6 relative overflow-hidden">
+                        {/* Background Effect */}
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600 rounded-full blur-3xl -mr-32 -mt-32 opacity-20 pointer-events-none"></div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 relative z-10">
+                            <div className="col-span-1 md:col-span-2">
+                                <p className="text-gray-400 text-xs font-bold mb-1">총 자산 (주식 + 예수금)</p>
+                                <div className="flex items-end gap-2">
+                                    {/* 수정: 중복된 '$' 제거 */}
+                                    <p className="text-4xl font-bold">{displayValue(totalAssets, displayCurrency)}</p>
+                                    <span className="text-sm text-gray-400 mb-2">{displayCurrency}</span>
+                                </div>
+                                {/* [투자 원금 표시] */}
+                                <div className="mt-2 text-xs text-gray-400 bg-white/10 inline-block px-2 py-1 rounded">
+                                    {/* 수정: 중복된 '$' 제거 */}
+                                    순수 투자 원금: {displayValue(totalInvest, displayCurrency)}
+                                </div>
+                            </div>
+                            <div className="col-span-1 md:col-span-2 grid grid-cols-2 gap-4">
+                                {/* 수정: 중복된 '$' 제거 */}
+                                <div><p className="text-gray-400 text-xs mb-1">총 예수금</p><p className="text-xl font-semibold">{displayValue(totalCashVal, displayCurrency)}</p></div>
+                                {/* 수정: 중복된 '$' 제거 */}
+                                <div><p className="text-gray-400 text-xs mb-1">투자 손익</p><p className={`text-xl font-semibold ${stockProfit >= 0 ? 'text-red-400' : 'text-blue-400'}`}>{stockProfit > 0 ? '+' : ''}{displayValue(stockProfit, displayCurrency)} <span className="text-sm">({stockProfitRate.toFixed(2)}%)</span></p></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* --- [Goal Progress] --- */}
                     {(selectedAccount !== 0 || combinedTargetAmount > 0) && (
                         <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-6">
                             <div className="flex justify-between items-end mb-2">
                                 <h3 className="text-gray-500 text-xs font-bold flex items-center gap-1"><Icons.Target /> 목표 달성 현황</h3>
-                                <div className="text-right">
-                                    <span className="text-xs text-gray-400">목표 금액: {fmt(combinedTargetAmount)}원</span>
-                                    {selectedAccount !== 0 && accounts.find(a => a.id === selectedAccount)?.targetRate > 0 && (
-                                         <span className="text-xs text-indigo-500 ml-2 font-bold">목표 수익률: {accounts.find(a => a.id === selectedAccount).targetRate}%</span>
-                                    )}
-                                </div>
+                                <span className="text-indigo-600 text-xs font-bold">{achievementRate.toFixed(1)}% 달성</span>
                             </div>
-                            <div className="relative h-4 bg-gray-100 rounded-full overflow-hidden">
-                                <div 
-                                    className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-400 to-indigo-500 transition-all duration-1000 ease-out"
-                                    style={{ width: `${Math.min(achievementRate, 100)}%` }}
-                                ></div>
-                            </div>
-                            <div className="flex justify-between mt-1 text-xs font-bold">
-                                <span className="text-gray-600">현재: {fmt(totalAssets)}원</span>
-                                <span className="text-indigo-600">{achievementRate.toFixed(1)}% 달성</span>
+                            <div className="relative h-3 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-blue-400 to-indigo-500 transition-all duration-1000 ease-out" style={{ width: `${Math.min(achievementRate, 100)}%` }}></div>
                             </div>
                         </div>
                     )}
 
-                    {/* Cash Card */}
+                    {/* --- [Cash Management] --- */}
                     {selectedAccount !== 0 && (
-                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-indigo-100 mb-6 relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-                            <h3 className="text-gray-500 text-xs font-bold mb-3 flex items-center gap-1"><Icons.Wallet /> 계좌 예수금 (현금)</h3>
-                            <div className="grid grid-cols-2 gap-8">
-                                <div>
-                                    <label className="text-xs text-gray-400 block mb-1">원화 예수금 (KRW)</label>
-                                    <div className="flex items-center gap-1">
-                                        <span className="text-lg font-bold">₩</span>
-                                        <input type="number" value={accounts.find(a => a.id === selectedAccount).cashKRW} onChange={(e) => updateAccountCash(selectedAccount, 'cashKRW', e.target.value)} className="text-xl font-bold text-gray-800 w-full focus:outline-none border-b border-transparent focus:border-indigo-300 bg-transparent" placeholder="0" />
-                                    </div>
+                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-indigo-50 mb-6">
+                            <h3 className="text-gray-500 text-xs font-bold mb-3 flex items-center gap-1"><Icons.Wallet /> 예수금 관리</h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border border-gray-100">
+                                    <span className="font-bold text-gray-500">₩</span>
+                                    <input type="number" value={accounts.find(a => a.id === selectedAccount).cashKRW} onChange={(e) => updateAccountCash(selectedAccount, 'cashKRW', e.target.value)} className="w-full bg-transparent font-bold text-gray-800 focus:outline-none" placeholder="0" />
                                 </div>
-                                <div>
-                                    <label className="text-xs text-gray-400 block mb-1">달러 예수금 (USD)</label>
-                                    <div className="flex items-center gap-1">
-                                        <span className="text-lg font-bold text-blue-500">$</span>
-                                        <input type="number" value={accounts.find(a => a.id === selectedAccount).cashUSD} onChange={(e) => updateAccountCash(selectedAccount, 'cashUSD', e.target.value)} className="text-xl font-bold text-blue-600 w-full focus:outline-none border-b border-transparent focus:border-indigo-300 bg-transparent" placeholder="0" />
-                                    </div>
-                                    <p className="text-xs text-gray-400 mt-1">≈ {fmt(accounts.find(a => a.id === selectedAccount).cashUSD * exchangeRate)}원</p>
+                                <div className="flex items-center gap-2 bg-blue-50 p-2 rounded-lg border border-blue-100">
+                                    <span className="font-bold text-blue-500">$</span>
+                                    <input type="number" value={accounts.find(a => a.id === selectedAccount).cashUSD} onChange={(e) => updateAccountCash(selectedAccount, 'cashUSD', e.target.value)} className="w-full bg-transparent font-bold text-blue-700 focus:outline-none" placeholder="0" />
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* Total Asset Summary */}
-                    <div className="bg-gray-900 text-white p-6 rounded-2xl shadow-lg mb-6">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div><p className="text-gray-400 text-xs font-bold mb-1">총 자산 (주식 + 예수금)</p><p className="text-3xl font-bold">{fmt(totalAssets)}원</p></div>
-                            <div className="flex gap-6 col-span-2">
-                                <div><p className="text-gray-400 text-xs mb-1">순수 주식 가치</p><p className="text-xl font-semibold">{fmt(totalStockVal)}원</p></div>
-                                <div><p className="text-gray-400 text-xs mb-1">총 예수금</p><p className="text-xl font-semibold">{fmt(totalCashVal)}원</p></div>
-                                <div><p className="text-gray-400 text-xs mb-1">투자 손익</p><p className={`text-xl font-semibold ${stockProfit >= 0 ? 'text-red-400' : 'text-blue-400'}`}>{stockProfit > 0 ? '+' : ''}{fmt(stockProfit)} ({stockProfitRate.toFixed(2)}%)</p></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* View Toggle Switch */}
-                    <div className="flex justify-center mb-6">
+                    {/* --- [View Toggle & Sort] --- */}
+                    <div className="flex flex-wrap justify-between items-center mb-4 gap-2">
                         <div className="bg-white p-1 rounded-xl border border-gray-200 shadow-sm flex">
-                            <button onClick={() => setViewMode('portfolio')} className={`px-6 py-2 rounded-lg text-sm font-bold transition-all ${viewMode === 'portfolio' ? 'bg-gray-800 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}>자산 현황</button>
-                            <button onClick={() => setViewMode('dividend')} className={`px-6 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${viewMode === 'dividend' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}><Icons.Coins size={14} /> 배당 관리</button>
+                            <button onClick={() => setViewMode('portfolio')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'portfolio' ? 'bg-gray-800 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}>자산 현황</button>
+                            <button onClick={() => setViewMode('dividend')} className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1 ${viewMode === 'dividend' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}><Icons.Coins size={12} /> 배당 관리</button>
+                        </div>
+                        
+                        {/* [Sort Dropdown] */}
+                        <div className="flex items-center gap-2">
+                            <span className="text-gray-400 text-xs"><Icons.Sort /></span>
+                            <select 
+                                value={sortOption} 
+                                onChange={(e) => setSortOption(e.target.value)}
+                                className="bg-white border border-gray-200 text-gray-600 text-xs font-bold rounded-lg px-2 py-1.5 focus:outline-none focus:border-gray-400"
+                            >
+                                <option value="assetDesc">평가금액 높은순</option>
+                                <option value="assetAsc">평가금액 낮은순</option>
+                                <option value="profitDesc">수익률 높은순</option>
+                                <option value="profitAsc">수익률 낮은순</option>
+                                <option value="nameAsc">종목명순</option>
+                            </select>
                         </div>
                     </div>
 
-                    {/* Content Area */}
+                    {/* --- [Content: Portfolio] --- */}
                     {viewMode === 'portfolio' ? (
-                        <div className="grid grid-cols-1 gap-3 mb-8">
-                            {filteredStocks.map(stock => {
+                        <div className="grid grid-cols-1 gap-3 mb-24">
+                            {sortedStocks.map(stock => {
                                 const isProfit = stock.currentPrice >= stock.avgPrice;
-                                const profitAmount = (stock.currentPrice - stock.avgPrice) * stock.quantity;
                                 const rate = ((stock.currentPrice - stock.avgPrice) / stock.avgPrice) * 100;
-                                const currencyStr = stock.symbol === 'USD' ? '$' : '₩';
-                                const displayProfit = stock.symbol === 'USD' ? fmtUSD(profitAmount) : fmt(profitAmount);
+                                
+                                // 화면 표시용 변환 값 (선택된 통화 기준)
+                                const dCurrentPrice = displayValue(stock.currentPrice, stock.symbol);
+                                const dAvgPrice = displayValue(stock.avgPrice, stock.symbol);
+                                const dProfitAmount = displayValue((stock.currentPrice - stock.avgPrice) * stock.quantity, stock.symbol);
+                                const dTotalVal = displayValue(stock.currentPrice * stock.quantity, stock.symbol);
 
                                 return (
                                     <div key={stock.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 hover:border-indigo-100 transition-all group">
                                         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                            {/* Stock Info */}
                                             <div className="flex items-center gap-4 w-full sm:w-auto">
                                                 <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 ${stock.symbol === 'USD' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>{stock.symbol}</div>
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-2">
-                                                        <h3 className="font-bold text-gray-800">{stock.name}</h3>
+                                                        {/* [주식명 수정 기능] */}
+                                                        <input 
+                                                            type="text" 
+                                                            value={stock.name} 
+                                                            onChange={(e) => updateStockField(stock.id, 'name', e.target.value)}
+                                                            className="font-bold text-gray-800 bg-transparent focus:outline-none border-b border-transparent focus:border-gray-300 w-32 sm:w-auto"
+                                                        />
                                                         {selectedAccount === 0 && <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">{accounts.find(a => a.id === stock.accountId)?.name}</span>}
+                                                        <button onClick={() => openDividendInfo(stock)} className="text-gray-300 hover:text-indigo-600 p-0.5"><Icons.Search size={12} /></button>
                                                     </div>
-                                                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                                                        <div className="flex items-center bg-gray-50 rounded px-1.5 py-0.5 border border-gray-100">
-                                                            <input type="number" value={stock.quantity} onChange={(e) => updateStockField(stock.id, 'quantity', e.target.value)} className="w-12 bg-transparent text-xs text-gray-600 font-medium focus:outline-none text-right" />
-                                                            <span className="text-[10px] text-gray-400 ml-0.5">주</span>
-                                                        </div>
-                                                        <div className="flex items-center bg-gray-50 rounded px-1.5 py-0.5 border border-gray-100">
-                                                            <span className="text-[10px] text-gray-400 mr-0.5">{currencyStr}</span>
-                                                            <input type="number" value={stock.avgPrice} onChange={(e) => updateStockField(stock.id, 'avgPrice', e.target.value)} className="w-16 bg-transparent text-xs text-gray-600 font-medium focus:outline-none" />
-                                                            <span className="text-[10px] text-gray-400 ml-0.5">평단</span>
-                                                        </div>
+                                                    <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-gray-500">
+                                                        <div className="flex items-center bg-gray-50 px-2 py-0.5 rounded"><input type="number" value={stock.quantity} onChange={(e) => updateStockField(stock.id, 'quantity', e.target.value)} className="w-10 bg-transparent text-right focus:outline-none" />주</div>
+                                                        <div className="flex items-center bg-gray-50 px-2 py-0.5 rounded">평단 <input type="number" value={stock.avgPrice} onChange={(e) => updateStockField(stock.id, 'avgPrice', e.target.value)} className="w-16 bg-transparent text-right focus:outline-none ml-1" /></div>
                                                     </div>
                                                 </div>
                                             </div>
+                                            {/* Price & Profit */}
                                             <div className="flex items-center justify-between w-full sm:w-auto sm:justify-end gap-6 pl-14 sm:pl-0">
-                                                <div className="flex flex-col items-end">
-                                                    <label className="text-[10px] text-gray-400 mb-0.5">현재가 수정</label>
-                                                    <div className="flex items-center bg-gray-50 px-2 py-1 rounded border border-gray-200 focus-within:border-indigo-500 w-24">
-                                                        <span className="text-xs text-gray-500 mr-1">{currencyStr}</span>
-                                                        <input type="number" value={stock.currentPrice} onChange={(e) => updateStockField(stock.id, 'currentPrice', e.target.value)} className="w-full bg-transparent text-sm font-bold text-gray-800 text-right focus:outline-none" />
+                                                <div className="text-right">
+                                                    <p className="text-[10px] text-gray-400">평가금액</p>
+                                                    {/* 수정: 중복된 '$' 제거 */}
+                                                    <p className="font-bold text-gray-700">{dTotalVal}</p>
+                                                    <div className="flex items-center justify-end gap-1 mt-0.5">
+                                                        <span className="text-[10px] text-gray-400">현재가</span>
+                                                        <input type="number" value={stock.currentPrice} onChange={(e) => updateStockField(stock.id, 'currentPrice', e.target.value)} className="w-16 text-right text-xs bg-gray-50 border-b border-gray-200 focus:outline-none" />
                                                     </div>
                                                 </div>
                                                 <div className={`text-right w-24 ${isProfit ? 'text-up' : 'text-down'}`}>
                                                     <p className="font-bold text-lg">{rate > 0 ? '+' : ''}{rate.toFixed(2)}%</p>
-                                                    <p className="text-xs font-medium opacity-80">{profitAmount > 0 ? '+' : ''}{displayProfit}</p>
+                                                    {/* 수정: 중복된 '$' 제거 */}
+                                                    <p className="text-xs font-medium opacity-80">{stock.symbol === 'USD' && displayCurrency === 'KRW' ? '≈ ' : ''}{dProfitAmount}</p>
                                                 </div>
-                                                <button onClick={() => deleteStock(stock.id)} className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors hidden sm:block opacity-0 group-hover:opacity-100"><Icons.Trash /></button>
-                                                <button onClick={() => deleteStock(stock.id)} className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors sm:hidden block"><Icons.Trash /></button>
+                                                <button onClick={() => deleteStock(stock.id)} className="text-gray-300 hover:text-red-500 transition-colors"><Icons.Trash /></button>
                                             </div>
                                         </div>
                                     </div>
@@ -378,31 +445,85 @@
                             })}
                         </div>
                     ) : (
-                        <div className="space-y-4">
-                            <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-6 text-white shadow-md mb-6">
+                        <div className="space-y-6 mb-24">
+                            {/* [Dividend Summary Card] */}
+                            <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-6 text-white shadow-md">
                                 <h3 className="text-indigo-100 text-xs font-bold mb-1">연간 예상 배당금 총액 (세전)</h3>
-                                <div className="flex items-end gap-2"><p className="text-3xl font-bold">{fmt(totalDividend)}원</p><p className="text-indigo-200 text-sm mb-1.5">(월 평균 ≈ {fmt(totalDividend / 12)}원)</p></div>
-                                <div className="mt-4 flex gap-4 text-xs text-indigo-100"><div className="bg-white/20 px-3 py-1.5 rounded-lg">배당 수익률: <span className="font-bold text-white">{(totalInvest > 0 ? (totalDividend/totalInvest)*100 : 0).toFixed(2)}%</span></div></div>
+                                <div className="flex items-end gap-2">
+                                    {/* 수정: 중복된 '$' 제거 */}
+                                    <p className="text-3xl font-bold">{displayValue(totalDividend, displayCurrency)}</p>
+                                    <span className="text-indigo-200 text-sm mb-1.5">{displayCurrency}</span>
+                                </div>
+                                {/* 수정: 중복된 '$' 제거 */}
+                                <p className="text-indigo-200 text-xs mt-1">(월 평균 ≈ {displayValue(totalDividend / 12, displayCurrency)})</p>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
-                                {filteredStocks.map(stock => {
-                                    const currencyStr = stock.symbol === 'USD' ? '$' : '₩';
-                                    const dividendYield = (stock.dividendAmount / stock.currentPrice) * 100;
+
+                            {/* [Monthly Dividend Chart] */}
+                            <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+                                <h3 className="text-gray-500 text-xs font-bold mb-4 flex items-center gap-1"><Icons.Calendar /> 월별 배당금 수령 예정 (추정)</h3>
+                                <div className="flex items-end gap-2 h-32 min-w-[500px]">
+                                    {monthlyDividends.map((amount, idx) => (
+                                        <div key={idx} className="flex-1 flex flex-col justify-end items-center group relative">
+                                            {amount > 0 && (
+                                                <div className="absolute bottom-full mb-1 text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                                    {displayValue(amount, displayCurrency)}
+                                                </div>
+                                            )}
+                                            <div 
+                                                className="w-full bg-indigo-100 rounded-t-sm hover:bg-indigo-300 transition-colors relative" 
+                                                style={{ height: `${totalDividend > 0 ? (amount / (Math.max(...monthlyDividends) || 1)) * 100 : 0}%`, minHeight: amount > 0 ? '4px' : '0' }}
+                                            ></div>
+                                            <span className="text-[10px] text-gray-400 mt-2">{idx + 1}월</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* [Dividend Stock List] */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {sortedStocks.map(stock => {
                                     const totalStockDiv = stock.dividendAmount * stock.quantity;
+                                    const dTotalStockDiv = displayValue(totalStockDiv, stock.symbol);
+                                    
                                     return (
                                         <div key={stock.id} className="bg-white p-4 rounded-xl shadow-sm border border-indigo-50 relative overflow-hidden group">
                                             <div className="flex justify-between items-start mb-3">
                                                 <div className="flex items-center gap-3">
                                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-[10px] ${stock.symbol === 'USD' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'}`}>{stock.symbol}</div>
-                                                    <div><h3 className="font-bold text-gray-800 text-sm">{stock.name}</h3><p className="text-xs text-gray-400">{stock.quantity}주 보유</p></div>
+                                                    <div>
+                                                        <h3 className="font-bold text-gray-800 text-sm flex items-center gap-1">{stock.name}</h3>
+                                                        <p className="text-xs text-gray-400">{stock.quantity}주</p>
+                                                    </div>
                                                 </div>
-                                                <div className="text-right"><p className="text-xs text-gray-400">연간 예상 배당</p><p className="font-bold text-indigo-600">{stock.symbol === 'USD' ? fmtUSD(totalStockDiv) : fmt(totalStockDiv) + '원'}</p></div>
+                                                <div className="text-right">
+                                                    <p className="text-xs text-gray-400">연간 배당금</p>
+                                                    {/* 수정: 중복된 '$' 제거 */}
+                                                    <p className="font-bold text-indigo-600">{stock.symbol === 'USD' && displayCurrency === 'KRW' ? '≈ ' : ''}{dTotalStockDiv}</p>
+                                                </div>
                                             </div>
                                             <div className="bg-gray-50 rounded-lg p-3 grid grid-cols-2 gap-3">
-                                                <div><label className="text-[10px] text-gray-400 block mb-1">주당 배당금 ({currencyStr})</label><input type="number" value={stock.dividendAmount} onChange={(e) => updateStockField(stock.id, 'dividendAmount', e.target.value)} className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-sm font-bold text-gray-700 focus:outline-none focus:border-indigo-400" placeholder="0" /></div>
-                                                <div><label className="text-[10px] text-gray-400 block mb-1">배당 기준일</label><input type="date" value={stock.dividendDate} onChange={(e) => updateStockField(stock.id, 'dividendDate', e.target.value)} className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-xs text-gray-700 focus:outline-none focus:border-indigo-400" /></div>
+                                                <div className="col-span-1">
+                                                    <label className="text-[10px] text-gray-400 block mb-1">주당 배당금 ({stock.symbol})</label>
+                                                    <input type="number" value={stock.dividendAmount} onChange={(e) => updateStockField(stock.id, 'dividendAmount', e.target.value)} className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-sm font-bold text-gray-700 focus:outline-none focus:border-indigo-400" placeholder="0" />
+                                                </div>
+                                                <div className="col-span-1">
+                                                    <label className="text-[10px] text-gray-400 block mb-1">지급 주기</label>
+                                                    <select 
+                                                        value={stock.frequency || "1"} 
+                                                        onChange={(e) => updateStockField(stock.id, 'frequency', e.target.value)}
+                                                        className="w-full bg-white border border-gray-200 rounded px-1 py-1 text-xs text-gray-700 focus:outline-none focus:border-indigo-400"
+                                                    >
+                                                        <option value="12">월배당 (12회)</option>
+                                                        <option value="4">분기배당 (4회)</option>
+                                                        <option value="2">반기배당 (2회)</option>
+                                                        <option value="1">연배당 (1회)</option>
+                                                    </select>
+                                                </div>
+                                                <div className="col-span-2">
+                                                    <label className="text-[10px] text-gray-400 block mb-1">배당 기준일 (시작점)</label>
+                                                    <input type="date" value={stock.dividendDate} onChange={(e) => updateStockField(stock.id, 'dividendDate', e.target.value)} className="w-full bg-white border border-gray-200 rounded px-2 py-1 text-xs text-gray-700 focus:outline-none focus:border-indigo-400" />
+                                                </div>
                                             </div>
-                                            <div className="mt-2 flex justify-between items-center px-1"><span className="text-[10px] text-gray-400">시가 배당률: {stock.dividendAmount > 0 ? dividendYield.toFixed(2) : 0}%</span>{stock.dividendDate && (<span className="text-[10px] text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full flex items-center gap-1"><Icons.Calendar size={10} /> {stock.dividendDate}</span>)}</div>
                                         </div>
                                     );
                                 })}
@@ -410,18 +531,24 @@
                         </div>
                     )}
 
-                    {/* Fixed Bottom Input */}
+                    {/* --- [Fixed Bottom Input] --- */}
                     <div className="fixed bottom-4 left-4 right-4 max-w-4xl mx-auto z-50">
                         <div className="bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-gray-200/50">
                             <form onSubmit={addStock} className="flex flex-col sm:flex-row gap-2">
-                                <div className="flex gap-2 flex-1"><input type="text" placeholder="종목명 (예: SCHD)" value={input.name} onChange={e => setInput({...input, name: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" /><select value={input.symbol} onChange={e => setInput({...input, symbol: e.target.value})} className="bg-gray-50 border border-gray-200 rounded-lg px-2 py-2 text-sm min-w-[70px]"><option value="KRW">KRW</option><option value="USD">USD</option></select></div>
-                                <div className="flex gap-2 flex-1"><input type="number" placeholder="수량" value={input.quantity} onChange={e => setInput({...input, quantity: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" /><input type="number" placeholder="평단가" value={input.avgPrice} onChange={e => setInput({...input, avgPrice: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" /></div>
+                                <div className="flex gap-2 flex-1">
+                                    <input type="text" placeholder="종목명 (예: SCHD)" value={input.name} onChange={e => setInput({...input, name: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                    <select value={input.symbol} onChange={e => setInput({...input, symbol: e.target.value})} className="bg-gray-50 border border-gray-200 rounded-lg px-2 py-2 text-sm min-w-[70px]"><option value="KRW">KRW</option><option value="USD">USD</option></select>
+                                </div>
+                                <div className="flex gap-2 flex-1">
+                                    <input type="number" placeholder="수량" value={input.quantity} onChange={e => setInput({...input, quantity: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                    <input type="number" placeholder="평단가" value={input.avgPrice} onChange={e => setInput({...input, avgPrice: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                </div>
                                 <button type="submit" disabled={selectedAccount === 0} className={`px-6 py-2 rounded-lg text-sm font-bold text-white whitespace-nowrap transition-colors ${selectedAccount === 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-gray-900 hover:bg-black'}`}>{selectedAccount === 0 ? "계좌선택" : "추가"}</button>
                             </form>
                         </div>
                     </div>
 
-                    {/* Settings Modal */}
+                    {/* Settings Modal (생략 - 기존과 동일) */}
                     {showSettingsModal && (
                         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
                             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm modal-overlay" onClick={() => setShowSettingsModal(false)}></div>
@@ -431,19 +558,10 @@
                                     <button onClick={() => setShowSettingsModal(false)} className="p-1 rounded-full hover:bg-gray-100 text-gray-500"><Icons.X /></button>
                                 </div>
                                 <div className="space-y-4">
-                                    <div>
-                                        <label className="text-xs font-bold text-gray-500 mb-1 block">계좌 이름</label>
-                                        <input type="text" value={editingAccount.name} onChange={(e) => setEditingAccount({...editingAccount, name: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                                    </div>
+                                    <div><label className="text-xs font-bold text-gray-500 mb-1 block">계좌 이름</label><input type="text" value={editingAccount.name} onChange={(e) => setEditingAccount({...editingAccount, name: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" /></div>
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="text-xs font-bold text-gray-500 mb-1 block">목표 자산 (원)</label>
-                                            <input type="number" value={editingAccount.targetAmount} onChange={(e) => setEditingAccount({...editingAccount, targetAmount: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="0" />
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-bold text-gray-500 mb-1 block">목표 수익률 (%)</label>
-                                            <input type="number" value={editingAccount.targetRate} onChange={(e) => setEditingAccount({...editingAccount, targetRate: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="0" />
-                                        </div>
+                                        <div><label className="text-xs font-bold text-gray-500 mb-1 block">목표 자산 (원)</label><input type="number" value={editingAccount.targetAmount} onChange={(e) => setEditingAccount({...editingAccount, targetAmount: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="0" /></div>
+                                        <div><label className="text-xs font-bold text-gray-500 mb-1 block">목표 수익률 (%)</label><input type="number" value={editingAccount.targetRate} onChange={(e) => setEditingAccount({...editingAccount, targetRate: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="0" /></div>
                                     </div>
                                 </div>
                                 <div className="flex gap-3 mt-8">
